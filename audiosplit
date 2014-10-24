@@ -1,0 +1,157 @@
+#!/bin/bash
+#
+# Copyright (C) 2014 Ivo Vegter
+# Licenced under GNU GPL v3.0
+# 
+# Splits a packed audio file according to cue points in the associated cue
+# file.
+#
+# Supported formats: FLAC, WV, WAV, APE
+# 
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by 
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#                                                                        
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of 
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+# GNU General Public License for more details.
+#
+# A copy of the full GNU General Public Licence can be found at: 
+# http://www.gnu.org/licenses/ 
+
+e_badargs=65
+e_notfound=127
+error=1
+declare -a formats=("flac" "wv" "ape" "wav")
+
+echo "audiosplit: Splits an audio file according to a matching .cue file."
+echo "(c) 2014 Ivo Vegter. Licensed under GNU GPL v3.0"
+
+# Command line processing. Very simple. Extracts switches like -h and 
+# --help, treats all others as a filename. Specifying .cue is optional.
+# The script will find an associated FLAC, WAV, WV or APE file and split
+# accordingly.
+
+if [  "${1##*-}" = "help" -o "${1##*-}" = "h" -o "$2" -o ! "$1" ]
+then
+  echo "Usage: `basename $0` <filename[.cue]>"
+  exit $e_badargs
+fi
+
+dir_resolve()
+{
+# cd to desired directory
+# if cd fails, suppress error message, but return exit status
+cd "$1" 2>/dev/null || return $?  
+echo "`pwd -P`" # output full, link-resolved path
+}
+
+# If path was specified on the command line, check it exists and turn
+# it into absolute path. Otherwise, just find absolute path of pwd.
+if [[ "$1" == *\/* ]]; then
+  relpath="${1%/*}"
+  if abspath="`dir_resolve \"$relpath\"`"; then
+    pathname="$abspath"
+  else
+    echo "ERROR: Path '$relpath' not found."
+    exit $e_notfound
+  fi
+  cuefilename="${1##*/}"
+else
+  pathname="`pwd -P`"
+  cuefilename="${1}"
+fi
+
+# If the file name has the extension .cue, or a tab-completion dot after it, remove it.
+if [[ "$cuefilename" == *. ]]; then
+  cuefilename="${cuefilename%.}"
+elif [[ "$cuefilename" == *.* ]]; then
+  ext="${cuefilename##*.}"
+  ext=`echo -n "$ext" | tr '[:upper:]' '[:lower:]'`
+  if [[ "${ext}" == "cue" ]]; then
+    cuefilename="${cuefilename%.*}"
+  fi
+fi
+
+# Audio file name ought to match:
+audiofilename=${cuefilename}
+
+# Find .cue file
+
+# First deal with [, ], *, ? characters by escaping them:
+cuefilename=`echo "${cuefilename}" | sed -e 's/\[/\\\[/g' -e 's/\]/\\\]/g' -e 's/\?/\\\?/g' -e 's/\*/\\\*/g'`
+audiofilename=`echo "${audiofilename}" | sed -e 's/\[/\\\[/g' -e 's/\]/\\\]/g' -e 's/\?/\\\?/g' -e 's/\*/\\\*/g'`
+
+while IFS= read -rd $'\0' file; do
+    cuefile="$file"
+done < <(find "${pathname}" -type f -iname "${cuefilename}.cue" -print0)
+# Check that .cue file has been found.
+if [ "$cuefile" ]; then
+  # Remove './' added by find operation:
+    cuefile="${cuefile##*/}"
+  # We have a .cue file name and it exists on disk.
+else
+  echo "ERROR: cue file '${cuefilename}' not found."
+  exit $e_notfound
+fi
+
+# Find audio file:
+found=False
+format=""
+
+for ext in "${formats[@]}"; do
+  
+  while IFS= read -rd $'\0' file; do
+      audiofile="$file"
+  done < <(find "${pathname}" -type f -iname "${audiofilename}.${ext}" -print0)
+
+  # Check audio file has been found:
+  if [ "$audiofile" ]; then
+    # Remove './' added by find operation:
+    audiofile="${audiofile##*/}"
+    format="${ext}"
+    # We have an audio filename as it exists on disk.
+    found=True
+    break
+  fi
+
+done
+
+if [ ! found ]; then
+  echo "ERROR: audio file ${audiofilename} not found."
+  exit $e_notfound
+fi
+
+# Finally, reconstruct absolute, fully-qualified filenames:
+audiofile="${pathname}/${audiofile}"
+cuefile="${pathname}/${cuefile}"
+echo "Splitting audio file: $audiofile"
+echo "as per the cue file: $cuefile"
+
+# Change working directory to make output appear where audio file is stored:
+cwd=`pwd`
+cd "${pathname}" || exit $?
+
+# Finally, we get to the job at hand, splitting the audio file:
+if [[ -f "${audiofile}" && -f "${cuefile}" ]]; then
+  echo "Splitting..."
+  cuebreakpoints "${cuefile}" | shnsplit -a "Track " -o "${format}" "${audiofile}" || exit $?
+#  echo "Tagging..."
+#  cuetag "${cuefile}" "Track*.${format}" || exit $?
+  echo "Done."
+else
+  echo "ERROR: Files to be split disappeared after being found."
+  exit $error
+fi
+
+#Change back to original working directory:
+if [ -d "$cwd" ]; then
+  cd "$cwd"
+else
+  echo "WARNING: Original working directory went missing."
+  exit $e_notfound
+fi
+
+exit 0
