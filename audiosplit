@@ -128,8 +128,8 @@ fi
 # Finally, reconstruct absolute, fully-qualified filenames:
 audiofile="${pathname}/${audiofile}"
 cuefile="${pathname}/${cuefile}"
-echo "Splitting audio file: $audiofile"
-echo ".....as per cue file: $cuefile"
+echo "Audio: $audiofile"
+echo "..cue: $cuefile"
 
 # Change working directory to make output appear where audio file is stored:
 cwd=`pwd`
@@ -137,7 +137,8 @@ cd "${pathname}" || exit $?
 
 # Finally, we get to the job at hand, splitting the audio file:
 if [[ -f "${audiofile}" && -f "${cuefile}" ]]; then
-  cuebreakpoints "${cuefile}" | shnsplit -a "Track " -o "${format}" "${audiofile}" || exit $?
+  echo "Splitting..."
+  cuebreakpoints "${cuefile}" | shnsplit -q -a "Track " -o "${format}" "${audiofile}" || exit $?
   echo "Tagging..."
   # find . -name "Track*" -print0 | xargs -0 cuetag "$cuefile"
   tracks=("Track*")
