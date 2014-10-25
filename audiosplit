@@ -147,7 +147,7 @@ if [[ -f "${audiofile}" && -f "${cuefile}" ]]; then
     echo "ERROR: Tracks to be tagged disappeared after being split."
   fi
   echo "Renaming..."
-  find . -name "Track*" -print0 | xargs -0 lltag --yes --no-tagging --rename '%n - %t'
+  find . -name "Track*" -print0 | xargs -0 lltag -q --yes --no-tagging --rename '%n - %t' > /dev/null
   # if (( ${#tracks[*]} )); then
   #   for track in ${tracks[@]}; do
   #     lltag --yes --no-tagging --rename '%n - %t' "${track}" || exit $?
