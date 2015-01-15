@@ -144,7 +144,7 @@ if [[ -f "${audiofile}" && -f "${cuefile}" ]]; then
     "ape")   format="ape";;
     "flac")  format="flac";;
   esac
-  cuebreakpoints "${cuefile}" | shnsplit -a "Track " -o "${format}" "${audiofile}" || exit $?
+  cuebreakpoints "${cuefile}" | shnsplit -a "Track" -o "${format}" "${audiofile}" || exit $?
   echo "Tagging..."
   # find . -name "Track*" -print0 | xargs -0 cuetag "$cuefile"
   tracks=("Track*")
@@ -155,14 +155,6 @@ if [[ -f "${audiofile}" && -f "${cuefile}" ]]; then
   fi
   echo "Renaming..."
   find . -name "Track*" -print0 | xargs -0 lltag -q --yes --no-tagging --rename '%n - %t' > /dev/null
-  # if (( ${#tracks[*]} )); then
-  #   for track in ${tracks[@]}; do
-  #     lltag --yes --no-tagging --rename '%n - %t' "${track}" || exit $?
-  #   done
-  # fi
-  # else
-  #   echo "ERROR: Tracks to be renamed disappeared after being tagged."
-  # fi
   echo "Done."
 else
   echo "ERROR: Files to be split disappeared after being found."
@@ -170,11 +162,6 @@ else
 fi
 
 #Change back to original working directory:
-if [ -d "$cwd" ]; then
-  cd "$cwd"
-else
-  echo "WARNING: Original working directory went missing."
-  exit $e_notfound
-fi
+cd "$cwd" || { echo "WARNING: Original working directory went missing."; exit $e_notfound }
 
 exit 0
