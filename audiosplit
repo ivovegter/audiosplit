@@ -162,6 +162,6 @@ else
 fi
 
 #Change back to original working directory:
-cd "$cwd" || { echo "WARNING: Original working directory went missing."; exit $e_notfound }
+cd "$cwd" || { echo "WARNING: Original working directory went missing."; exit $e_notfound; }
 
-exit 0
+exit
