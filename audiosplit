@@ -144,7 +144,7 @@ if [[ -f "${audiofile}" && -f "${cuefile}" ]]; then
     "ape")   format="ape";;
     "flac")  format="flac";;
   esac
-  cuebreakpoints "${cuefile}" | sed s/$/0 | shnsplit -a "Track" -o "${format}" "${audiofile}" || exit $?
+  cuebreakpoints "${cuefile}" | sed s/$/0/ | shnsplit -a "Track" -o "${format}" "${audiofile}" || exit $?
   echo "Tagging..."
   # find . -name "Track*" -print0 | xargs -0 cuetag "$cuefile"
   tracks=("Track*")
