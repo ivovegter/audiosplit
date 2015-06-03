@@ -81,9 +81,9 @@ audiofilename=${cuefilename}
 
 # Find .cue file
 
-# First deal with [, ], *, ? characters by escaping them:
-cuefilename=`echo "${cuefilename}" | sed -e 's/\[/\\\[/g' -e 's/\]/\\\]/g' -e 's/\?/\\\?/g' -e 's/\*/\\\*/g'`
-audiofilename=`echo "${audiofilename}" | sed -e 's/\[/\\\[/g' -e 's/\]/\\\]/g' -e 's/\?/\\\?/g' -e 's/\*/\\\*/g'`
+# First deal with [, ], *, ?, / characters by escaping them:
+cuefilename=`echo "${cuefilename}" | sed -e 's/\[/\\\[/g' -e 's/\]/\\\]/g' -e 's/\?/\\\?/g' -e 's/\*/\\\*/g' -e 's.\/.\\\/.g'`
+audiofilename=`echo "${audiofilename}" | sed -e 's/\[/\\\[/g' -e 's/\]/\\\]/g' -e 's/\?/\\\?/g' -e 's/\*/\\\*/g' -e 's.\/.\\\/.g'`
 
 while IFS= read -rd $'\0' file; do
     cuefile="$file"
@@ -138,13 +138,18 @@ cd "${pathname}" || exit $?
 # Finally, we get to the job at hand, splitting the audio file:
 if [[ -f "${audiofile}" && -f "${cuefile}" ]]; then
   #echo "Splitting..."
-  case ${format} in
-    "wv")    format="flac";;
-    "wav")   format="wav";;
-    "ape")   format="ape";;
-    "flac")  format="flac";;
-  esac
-  cuebreakpoints "${cuefile}" | sed s/$/0/ | shnsplit -a "Track" -o "${format}" "${audiofile}" || exit $?
+  if ${format} = "wv"; then
+    format="flac"
+  fi
+  if ${format} = "ape"; then
+    ffmpeg -i "${audiofile}" "${audiofile/.ape/.wav}" && flac "${audiofile/.ape/.wav}"
+    audiofile="${audiofile/.ape/.flac}"
+    format="flac"
+  fi
+    
+#  cuebreakpoints "${cuefile}" | sed s/$/0/ | shnsplit -a "Track" -o "${format}" "${audiofile}" || exit $?
+  cuebreakpoints "${cuefile}" | shnsplit -a "Track" -o "${format}" "${audiofile}" || exit $?
+    
   echo "Tagging..."
   # find . -name "Track*" -print0 | xargs -0 cuetag "$cuefile"
   tracks=("Track*")
