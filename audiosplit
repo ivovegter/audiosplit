@@ -137,16 +137,18 @@ cd "${pathname}" || exit $?
 
 # Finally, we get to the job at hand, splitting the audio file:
 if [[ -f "${audiofile}" && -f "${cuefile}" ]]; then
-  #echo "Splitting..."
-  if ${format} = "wv"; then
+  if [[ "${format}" = "wv" || "${format}" = "wav" ]]; then
     format="flac"
   fi
-  if ${format} = "ape"; then
-    ffmpeg -i "${audiofile}" "${audiofile/.ape/.wav}" && flac "${audiofile/.ape/.wav}"
+  if [[ "${format}" = "ape" ]]; then
+      # Start a slow workaround for the curious fact that shnsplit won't read .ape files.
+    echo "Converting .ape to .flac..."
+    ffmpeg -v 32 -i "${audiofile}" "${audiofile/.ape/.flac}"
     audiofile="${audiofile/.ape/.flac}"
     format="flac"
   fi
-    
+
+  echo "Splitting..."
 #  cuebreakpoints "${cuefile}" | sed s/$/0/ | shnsplit -a "Track" -o "${format}" "${audiofile}" || exit $?
   cuebreakpoints "${cuefile}" | shnsplit -a "Track" -o "${format}" "${audiofile}" || exit $?
     
